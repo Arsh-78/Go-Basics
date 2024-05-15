@@ -1,0 +1,1 @@
+This is supposed to appear in the terminal
