@@ -1,0 +1,25 @@
+syntax = "proto3";
+option go_package = "./student";
+
+
+
+service CRUD {
+    rpc CreateStudent (Student) returns (ID) {}
+    rpc ReadStudent (ID) returns (Student) {}
+    rpc UpdateStudent (Student) returns (ID) {}
+    rpc DeleteStudent (ID) returns (ID) {}
+}
+
+message Student {
+    string name =1;
+    string studentId =2; 
+    int32  class =3;
+    string email=4;
+    string address =5; 
+}
+
+message ID {
+    string id = 1;
+}
+
+
