@@ -79,3 +79,51 @@ func (s *server) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 	return &pb.ID{Id: st.StudentId}, err
 
 }
+
+func (s *server) ReadStudent(ctx context.Context, st *pb.ID) (*pb.Student, error) {
+	// If ID is null, return specific error
+	if st.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
+	}
+
+	var result pb.Student
+
+	query := "SELECT * FROM studentTwo WHERE studentId = ?"
+	err := db.QueryRow(query, st.Id).Scan(&result.Name, &result.StudentId, &result.Class, &result.Email, &result.Address)
+
+	if err != nil {
+		log.Printf("Error retrieving employee with id: %s, error: %v", st.Id, err)
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, error) {
+	// If ID is null, return specific error
+	if st.StudentId == "" {
+		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
+	}
+
+	stmt, err := db.Prepare("UPDATE studentTwo SET name = ?, class = ? , email = ? ,address = ? WHERE studentId = ?")
+	if err != nil {
+		log.Fatalf("Error preparing SQL statement: %v", err)
+	}
+
+	_, err = stmt.Exec(st.Name, st.Class, st.Email, st.Address, st.StudentId)
+
+	if err != nil {
+		log.Fatalf("Error executing SQL statement: %v", err)
+	}
+
+	return &pb.ID{Id: st.StudentId}, err
+}
+
+func (s *server) DeleteStudent(ctx context.Context, st *pb.ID) (*pb.ID, error) {
+	_, err := db.Exec(`DELETE FROM studentTwo WHERE studentId = ?`, st.Id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &pb.ID{Id: st.Id}, err
+}
