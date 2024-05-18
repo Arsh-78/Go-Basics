@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	pb "example/go_crud_grpc/proto"
+	dbstore "example/go_crud_grpc/server/store"
 
 	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
@@ -23,12 +25,20 @@ var db *sql.DB
 
 func main() {
 
-	// Open up our database connection.
-	// I've set up a database on my local machine using phpmyadmin.
-	// The database is called testDb
+	// env_err := godotenv.Load()
+	// if env_err != nil {
+	// 	log.Fatal("Error loading .env file")
+	// }
+
+	// // Open up our database connection.
+	// // I've set up a database on my local machine using mysql and mysql workbench.
+	// // The database is called test_db
+
+	// var err error
+	// connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s", os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
+
 	var err error
-	connectionString := "root:new-password@tcp(127.0.0.1:3306)/test_db"
-	db, err = sql.Open("mysql", connectionString)
+	db, err = dbstore.EstablishDbConnection()
 	fmt.Println("db in main", db)
 
 	// if there is an error opening the connection, handle it
@@ -47,7 +57,7 @@ func main() {
 	fmt.Println("Successfully connected to the database!")
 
 	// Host grpc service
-	listen, err := net.Listen("tcp", "127.0.0.1:50052")
+	listen, err := net.Listen("tcp", os.Getenv("SERVER_ADDR"))
 	if err != nil {
 		log.Fatalf("Could not listen on port: %v", err)
 	}
@@ -66,11 +76,7 @@ func main() {
 func (s *server) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, error) {
 	// If ID is null, return specific error
 
-	if st.StudentId == "" {
-		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
-	}
-	fmt.Println("db in createstud ", db)
-	result, err := db.Exec(`INSERT INTO studentTwo (name, studentId, class, email, address) VALUES (?, ?, ?, ?, ?)`, st.Name, st.StudentId, st.Class, st.Email, st.Address)
+	result, err := dbstore.Create(db, st)
 	if err != nil {
 		log.Fatal("Yaha pe error aa rha ", err)
 	}
@@ -82,21 +88,15 @@ func (s *server) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 
 func (s *server) ReadStudent(ctx context.Context, st *pb.ID) (*pb.Student, error) {
 	// If ID is null, return specific error
-	if st.Id == "" {
-		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
-	}
 
-	var result pb.Student
-
-	query := "SELECT * FROM studentTwo WHERE studentId = ?"
-	err := db.QueryRow(query, st.Id).Scan(&result.Name, &result.StudentId, &result.Class, &result.Email, &result.Address)
+	res, err := dbstore.Read(db, st)
 
 	if err != nil {
 		log.Printf("Error retrieving employee with id: %s, error: %v", st.Id, err)
 		return nil, err
 	}
 
-	return &result, nil
+	return res, nil
 }
 
 func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, error) {
@@ -105,12 +105,7 @@ func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
 
-	stmt, err := db.Prepare("UPDATE studentTwo SET name = ?, class = ? , email = ? ,address = ? WHERE studentId = ?")
-	if err != nil {
-		log.Fatalf("Error preparing SQL statement: %v", err)
-	}
-
-	_, err = stmt.Exec(st.Name, st.Class, st.Email, st.Address, st.StudentId)
+	err := dbstore.Update(db, st)
 
 	if err != nil {
 		log.Fatalf("Error executing SQL statement: %v", err)
@@ -120,10 +115,6 @@ func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 }
 
 func (s *server) DeleteStudent(ctx context.Context, st *pb.ID) (*pb.ID, error) {
-	_, err := db.Exec(`DELETE FROM studentTwo WHERE studentId = ?`, st.Id)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	err := dbstore.Delete(db, st)
 	return &pb.ID{Id: st.Id}, err
 }
