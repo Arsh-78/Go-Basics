@@ -13,6 +13,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+// * * This isn't compulsory but can be used as cli for requesting services
+
 func main() {
 
 	err := godotenv.Load()

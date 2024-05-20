@@ -9,7 +9,7 @@ import (
 	"os"
 
 	pb "example/go_crud_grpc/proto"
-	dbstore "example/go_crud_grpc/server/store"
+	"example/go_crud_grpc/server/store"
 
 	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
@@ -25,20 +25,9 @@ var db *sql.DB
 
 func main() {
 
-	// env_err := godotenv.Load()
-	// if env_err != nil {
-	// 	log.Fatal("Error loading .env file")
-	// }
-
-	// // Open up our database connection.
-	// // I've set up a database on my local machine using mysql and mysql workbench.
-	// // The database is called test_db
-
-	// var err error
-	// connectionString := fmt.Sprintf("%s:%s@tcp(%s)/%s", os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"), os.Getenv("DB_NAME"))
-
+	//Establishing DB connections
 	var err error
-	db, err = dbstore.EstablishDbConnection()
+	db, err = store.EstablishDbConnection()
 	fmt.Println("db in main", db)
 
 	// if there is an error opening the connection, handle it
@@ -49,12 +38,17 @@ func main() {
 	// defer the close till after the main function has finished
 	// executing
 	defer db.Close()
+
+	//Pinging for connection check
 	err = db.Ping()
 	if err != nil {
 		fmt.Println("Error pinging database:", err)
 		return
 	}
 	fmt.Println("Successfully connected to the database!")
+
+	//Performing database migrations for table and db if not exists
+	store.Migrations(db, err)
 
 	// Host grpc service
 	listen, err := net.Listen("tcp", os.Getenv("SERVER_ADDR"))
@@ -75,8 +69,11 @@ func main() {
 
 func (s *server) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, error) {
 	// If ID is null, return specific error
+	if st.StudentId == "" {
+		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
+	}
 
-	result, err := dbstore.Create(db, st)
+	result, err := store.Create(db, st)
 	if err != nil {
 		log.Fatal("Yaha pe error aa rha ", err)
 	}
@@ -89,13 +86,16 @@ func (s *server) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 func (s *server) ReadStudent(ctx context.Context, st *pb.ID) (*pb.Student, error) {
 	// If ID is null, return specific error
 
-	res, err := dbstore.Read(db, st)
+	if st.Id == "" {
+		return &pb.Student{}, status.Error(codes.InvalidArgument, "ID is empty, please try again")
+	}
+
+	res, err := store.Read(db, st)
 
 	if err != nil {
 		log.Printf("Error retrieving employee with id: %s, error: %v", st.Id, err)
 		return nil, err
 	}
-
 	return res, nil
 }
 
@@ -104,17 +104,14 @@ func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 	if st.StudentId == "" {
 		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
-
-	err := dbstore.Update(db, st)
-
+	err := store.Update(db, st)
 	if err != nil {
 		log.Fatalf("Error executing SQL statement: %v", err)
 	}
-
 	return &pb.ID{Id: st.StudentId}, err
 }
 
 func (s *server) DeleteStudent(ctx context.Context, st *pb.ID) (*pb.ID, error) {
-	err := dbstore.Delete(db, st)
+	err := store.Delete(db, st)
 	return &pb.ID{Id: st.Id}, err
 }
