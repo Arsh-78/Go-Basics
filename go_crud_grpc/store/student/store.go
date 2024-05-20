@@ -20,6 +20,16 @@ const UpdateStudentQuery = `UPDATE studentTwo SET name = ?, class = ? , email = 
 
 const DeleteStudentQuery = `DELETE FROM studentTwo WHERE studentId = ?`
 
+type Store struct {
+	db *sql.DB
+}
+
+func New(db *sql.DB) *Store {
+	return &Store{
+		db: db,
+	}
+}
+
 func EstablishDbConnection() (*sql.DB, error) {
 	env_err := godotenv.Load()
 	if env_err != nil {
