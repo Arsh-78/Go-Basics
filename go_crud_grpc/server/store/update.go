@@ -1,13 +1,13 @@
 package store
 
 import (
-	"database/sql"
+	"context"
 	pb "example/go_crud_grpc/proto"
 	"log"
 )
 
-func Update(db *sql.DB, st *pb.Student) error {
-	stmt, err := db.Prepare(UpdateStudentQuery)
+func (s *Store) Update(ctx context.Context, st *pb.Student) error {
+	stmt, err := s.db.Prepare(UpdateStudentQuery)
 	if err != nil {
 		log.Fatalf("Error preparing SQL statement: %v", err)
 	}

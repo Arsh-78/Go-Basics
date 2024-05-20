@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/thedatashed/xlsxreader"
@@ -16,17 +17,38 @@ type Student struct {
 }
 
 func main() {
-	// Create an instance of the reader by opening a target file
-	xl, _ := xlsxreader.OpenFile("student_records.xlsx")
-
-	// Ensure the file reader is closed once utilised
+	// Open the Excel file
+	xl, err := xlsxreader.OpenFile("student_records.xlsx")
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
 	defer xl.Close()
 
-	fmt.Println(len(xl.ReadRows(xl.Sheets[0])))
+	// Read student records from the Excel file
+	students := readStudentRecords(xl)
+	fmt.Printf("Total students read: %d\n", len(students))
 
+	// Create a channel for student batches
+	studentChannel := make(chan []Student, 5)
+
+	// Start worker goroutines
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go worker(i, studentChannel, &wg)
+	}
+
+	// Distribute student records to workers in batches
+	distributeStudents(students, studentChannel)
+
+	// Close the channel and wait for all workers to finish
+	close(studentChannel)
+	wg.Wait()
+}
+
+// readStudentRecords reads student records from the first sheet of the Excel file
+func readStudentRecords(xl *xlsxreader.XlsxFileCloser) []Student {
 	var students []Student
-
-	// Iterate on the rows of data
 	for row := range xl.ReadRows(xl.Sheets[0]) {
 		if len(row.Cells) >= 5 {
 			students = append(students, Student{
@@ -38,41 +60,32 @@ func main() {
 			})
 		}
 	}
+	return students
+}
 
-	var wg sync.WaitGroup
-
-	studentChannel := make(chan []Student, 5)
-
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go worker(i, studentChannel, &wg)
-	}
-
+// distributeStudents distributes student records to the channel in batches of 20
+func distributeStudents(students []Student, studentChannel chan<- []Student) {
 	for i := 1; i < len(students); i += 20 {
 		end := i + 20
-
 		if end > len(students) {
 			end = len(students)
 		}
 		studentChannel <- students[i:end]
 	}
-
-	close(studentChannel)
-
-	wg.Wait()
 }
 
+// worker processes batches of student records from the channel
 func worker(id int, studentChannel <-chan []Student, wg *sync.WaitGroup) {
-
 	defer wg.Done()
-
 	for batch := range studentChannel {
 		fmt.Printf("Worker %d processing batch with %d records\n", id, len(batch))
-		// Process the batch
 		for _, student := range batch {
-			// Simulate processing each student record
-			fmt.Printf("Worker %d processing student ID %s\n", id, student.StudentID)
+			processStudent(id, student)
 		}
-
 	}
+}
+
+// processStudent simulates processing a single student record
+func processStudent(workerID int, student Student) {
+	fmt.Printf("Worker %d processing student ID %s\n", workerID, student.StudentID)
 }

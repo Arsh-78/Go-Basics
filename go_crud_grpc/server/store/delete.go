@@ -1,14 +1,14 @@
 package store
 
 import (
-	"database/sql"
+	"context"
 	pb "example/go_crud_grpc/proto"
 	"log"
 )
 
-func Delete(db *sql.DB, st *pb.ID) error {
+func (s *Store) Delete(ctx context.Context, st *pb.ID) error {
 
-	_, err := db.Exec(DeleteStudentQuery, st.Id)
+	_, err := s.db.Exec(DeleteStudentQuery, st.Id)
 	if err != nil {
 		log.Fatal(err)
 	}

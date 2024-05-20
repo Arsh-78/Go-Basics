@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
+	pb "example/go_crud_grpc/proto"
+	"example/go_crud_grpc/server/store"
 	"fmt"
 	"log"
 	"net"
 	"os"
-
-	pb "example/go_crud_grpc/proto"
-	"example/go_crud_grpc/server/store"
 
 	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
@@ -19,15 +17,14 @@ import (
 
 type server struct {
 	pb.UnimplementedCRUDServer
+	store *store.Store
 }
-
-var db *sql.DB
 
 func main() {
 
 	//Establishing DB connections
-	var err error
-	db, err = store.EstablishDbConnection()
+
+	db, err := store.EstablishDbConnection()
 	fmt.Println("db in main", db)
 
 	// if there is an error opening the connection, handle it
@@ -58,7 +55,7 @@ func main() {
 
 	// gRPC server
 	s := grpc.NewServer()
-	pb.RegisterCRUDServer(s, &server{})
+	pb.RegisterCRUDServer(s, &server{store: store.New(db)})
 	if err := s.Serve(listen); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
@@ -73,7 +70,7 @@ func (s *server) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
 
-	result, err := store.Create(db, st)
+	result, err := s.store.Create(ctx, st)
 	if err != nil {
 		log.Fatal("Yaha pe error aa rha ", err)
 	}
@@ -90,7 +87,7 @@ func (s *server) ReadStudent(ctx context.Context, st *pb.ID) (*pb.Student, error
 		return &pb.Student{}, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
 
-	res, err := store.Read(db, st)
+	res, err := s.store.Read(ctx, st)
 
 	if err != nil {
 		log.Printf("Error retrieving employee with id: %s, error: %v", st.Id, err)
@@ -104,7 +101,7 @@ func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 	if st.StudentId == "" {
 		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
-	err := store.Update(db, st)
+	err := s.store.Update(ctx, st)
 	if err != nil {
 		log.Fatalf("Error executing SQL statement: %v", err)
 	}
@@ -112,6 +109,6 @@ func (s *server) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, err
 }
 
 func (s *server) DeleteStudent(ctx context.Context, st *pb.ID) (*pb.ID, error) {
-	err := store.Delete(db, st)
+	err := s.store.Delete(ctx, st)
 	return &pb.ID{Id: st.Id}, err
 }
