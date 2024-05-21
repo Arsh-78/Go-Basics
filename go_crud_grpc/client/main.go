@@ -4,20 +4,25 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	pb "example/go_crud_grpc/proto"
 
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 )
 
-const (
-	address = "127.0.0.1:50052"
-)
+// * * This isn't compulsory but can be used as cli for requesting services
 
 func main() {
 
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	conn, err := grpc.Dial(os.Getenv("SERVER_ADDR"), grpc.WithInsecure())
 
 	if err != nil {
 		log.Fatalf("Did not connect to the server: %v", err)
