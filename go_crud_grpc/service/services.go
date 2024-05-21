@@ -34,7 +34,7 @@ func (s *Service) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, er
 
 	result, err := s.store.Create(ctx, st)
 	if err != nil {
-		log.Fatal("Yaha pe error aa rha ", err)
+		log.Fatal("Error Creating Student :  ", err)
 	}
 	fmt.Println("Insert Success with result :: ", result)
 
