@@ -22,13 +22,20 @@ func (s *Store) Read(ctx context.Context, st *pb.ID) (*pb.Student, error) {
 
 }
 
-func (s *Store) Update(ctx context.Context, st *pb.Student) error {
-	stmt, err := s.db.Prepare(UpdateStudentQuery)
+func (s *Store) Update(ctx context.Context, st *pb.Student) (sql.Result, error) {
+	// query := UpdateStudentQuery
+	// res, err := s.db.ExecContext(ctx, query, st.Name, st.Class, st.Email, st.Address, st.StudentId)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return res, nil
+
+	result, err := s.db.Exec(UpdateStudentQuery, st.Name, st.Class, st.Email, st.Address, st.StudentId)
 	if err != nil {
-		log.Fatalf("Error preparing SQL statement: %v", err)
+		log.Fatal("failed to execute update query:", err)
 	}
-	_, err = stmt.Exec(st.Name, st.Class, st.Email, st.Address, st.StudentId)
-	return err
+
+	return result, err
 }
 
 func (s *Store) Delete(ctx context.Context, st *pb.ID) error {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	pb "example/go_crud_grpc/proto"
-	"example/go_crud_grpc/store/student"
+	store "example/go_crud_grpc/store/student"
 	"fmt"
 	"log"
 
@@ -25,6 +25,9 @@ func NewService(db *sql.DB) *Service {
 
 func (s *Service) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, error) {
 	// If ID is null, return specific error
+	if st == nil {
+		return nil, status.Error(codes.InvalidArgument, "st is empty, please try again")
+	}
 	if st.StudentId == "" {
 		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
@@ -42,6 +45,10 @@ func (s *Service) CreateStudent(ctx context.Context, st *pb.Student) (*pb.ID, er
 func (s *Service) ReadStudent(ctx context.Context, st *pb.ID) (*pb.Student, error) {
 	// If ID is null, return specific error
 
+	if st == nil {
+		return nil, status.Error(codes.InvalidArgument, "st is empty, please try again")
+	}
+
 	if st.Id == "" {
 		return &pb.Student{}, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
@@ -56,11 +63,19 @@ func (s *Service) ReadStudent(ctx context.Context, st *pb.ID) (*pb.Student, erro
 }
 
 func (s *Service) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, error) {
+
+	if st == nil {
+		return nil, status.Error(codes.InvalidArgument, "st is empty, please try again")
+	}
 	// If ID is null, return specific error
+
 	if st.StudentId == "" {
 		return nil, status.Error(codes.InvalidArgument, "ID is empty, please try again")
 	}
-	err := s.store.Update(ctx, st)
+	res, err := s.store.Update(ctx, st)
+
+	fmt.Println("Update Success with result :: ", res)
+
 	if err != nil {
 		log.Fatalf("Error executing SQL statement: %v", err)
 	}
@@ -68,6 +83,10 @@ func (s *Service) UpdateStudent(ctx context.Context, st *pb.Student) (*pb.ID, er
 }
 
 func (s *Service) DeleteStudent(ctx context.Context, st *pb.ID) (*pb.ID, error) {
+
+	if st == nil {
+		return nil, status.Error(codes.InvalidArgument, "st is empty, please try again")
+	}
 	err := s.store.Delete(ctx, st)
 	return &pb.ID{Id: st.Id}, err
 }
